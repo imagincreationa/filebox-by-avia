@@ -61,6 +61,7 @@ export const tools: Tool[] = [
     color: 'yellow',
     maxFiles: 10,
     acceptedFormats: ['.pdf'],
+    requiresApi: true,
   },
   // Document Conversion
   {
@@ -72,6 +73,7 @@ export const tools: Tool[] = [
     color: 'coral',
     maxFiles: 10,
     acceptedFormats: ['.doc', '.docx'],
+    requiresApi: true,
   },
   {
     id: 'pdf-to-jpg',
