@@ -5,6 +5,7 @@ import { Tool, UploadedFile, ToolSettings, defaultSettings } from '@/types/tools
 import { Button } from '@/components/ui/button';
 import { FileUploadZone } from './FileUploadZone';
 import { ToolSettingsPanel } from './ToolSettingsPanel';
+import { processFiles, downloadBlobs } from '@/lib/fileProcessor';
 
 interface ToolModalProps {
   tool: Tool;
@@ -36,20 +37,60 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
 
     setIsProcessing(true);
     setProgress(0);
+    setIsComplete(false);
+    setResultBlobs([]);
 
-    // Simulate processing for now - will be replaced with actual processing
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setProgress(i);
+    try {
+      const blobs = await processFiles(
+        tool.id,
+        files,
+        settings,
+        (progress) => {
+          setProgress(Math.min(Math.max(progress, 0), 100)); // Ensure progress is between 0-100
+        }
+      );
+      
+      if (blobs.length === 0) {
+        throw new Error('No files were processed. Please try again.');
+      }
+      
+      setResultBlobs(blobs);
+      setProgress(100);
+      // Small delay to show 100% before showing success
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setIsComplete(true);
+      setIsProcessing(false);
+    } catch (error) {
+      console.error('Processing error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while processing files. Please try again.';
+      alert(`Error: ${errorMessage}`);
+      setIsProcessing(false);
+      setProgress(0);
+      setIsComplete(false);
     }
-
-    setIsProcessing(false);
-    setIsComplete(true);
   };
 
   const handleDownload = () => {
-    // In a real app, this would download the processed file
-    alert('Download would start here! (Demo mode)');
+    if (resultBlobs.length === 0) return;
+    
+    const settingsObj = settings as any;
+    const baseFilename = settingsObj.outputFilename || tool.id.replace(/-/g, '_');
+    
+    // Determine file extension and MIME type based on tool
+    let extension = 'pdf';
+    if (tool.id === 'pdf-to-jpg') {
+      extension = 'jpg';
+    } else if (tool.id === 'format-converter') {
+      extension = settingsObj.outputFormat || 'png';
+    } else if (tool.id === 'compress-image') {
+      // Keep original extension or default to jpg
+      const originalExt = files[0]?.name.split('.').pop()?.toLowerCase();
+      extension = originalExt || 'jpg';
+    } else if (tool.id === 'split-pdf') {
+      extension = 'pdf';
+    }
+    
+    downloadBlobs(resultBlobs, baseFilename, extension);
   };
 
   const handleReset = () => {
@@ -90,8 +131,46 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
-          {isApiRequired ? (
+        <div className="p-6 overflow-y-auto flex-1 relative">
+          {isProcessing ? (
+            /* Processing State */
+            <div className="text-center py-12">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center relative">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                <div className="absolute inset-0 rounded-full border-4 border-primary/20 border-t-primary animate-spin" style={{ animationDuration: '1s' }} />
+              </div>
+              <h3 className="font-bold text-xl text-foreground mb-2">
+                Processing Your Files...
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Please wait while we process your {files.length} {files.length === 1 ? 'file' : 'files'}
+              </p>
+              
+              {/* Progress bar */}
+              <div className="max-w-md mx-auto">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-foreground">
+                    Progress
+                  </span>
+                  <span className="text-sm font-bold text-primary">
+                    {progress}%
+                  </span>
+                </div>
+                <div className="retro-progress h-6">
+                  <div
+                    className="retro-progress-bar h-full"
+                    style={{ width: `${progress}%`, transition: 'width 0.3s ease-out' }}
+                  />
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {progress < 30 && 'Initializing...'}
+                  {progress >= 30 && progress < 70 && 'Processing files...'}
+                  {progress >= 70 && progress < 100 && 'Finalizing...'}
+                  {progress === 100 && 'Complete!'}
+                </div>
+              </div>
+            </div>
+          ) : isApiRequired ? (
             /* API Required State */
             <div className="text-center py-8">
               <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
@@ -166,26 +245,6 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
                 <Button variant="outline" size="lg" onClick={handleReset}>
                   Process More
                 </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Progress bar */}
-          {isProcessing && (
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-foreground">
-                  Processing...
-                </span>
-                <span className="text-sm font-semibold text-primary">
-                  {progress}%
-                </span>
-              </div>
-              <div className="retro-progress">
-                <div
-                  className="retro-progress-bar"
-                  style={{ width: `${progress}%` }}
-                />
               </div>
             </div>
           )}

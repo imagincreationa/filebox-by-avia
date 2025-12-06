@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 interface SidebarProps {
   activeCategory: string;
   onCategoryChange: (category: string) => void;
+  onSettingsClick?: () => void;
+  onUpgradeClick?: () => void;
 }
 
 const menuItems = [
@@ -29,7 +31,7 @@ const bottomItems = [
   { id: 'help', label: 'Help Center', icon: HelpCircle },
 ];
 
-export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
+export function Sidebar({ activeCategory, onCategoryChange, onSettingsClick, onUpgradeClick }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -99,7 +101,7 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
           <p className="text-xs text-muted-foreground mb-3">
             Unlock unlimited conversions & premium features
           </p>
-          <Button variant="retro" size="sm" className="w-full">
+          <Button variant="retro" size="sm" className="w-full" onClick={onUpgradeClick}>
             Upgrade Now
           </Button>
         </div>
@@ -110,6 +112,11 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
         {bottomItems.map((item) => (
           <button
             key={item.id}
+            onClick={() => {
+              if (item.id === 'settings' && onSettingsClick) {
+                onSettingsClick();
+              }
+            }}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all",
               "text-muted-foreground hover:bg-muted hover:text-foreground"

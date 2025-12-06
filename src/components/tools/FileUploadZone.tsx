@@ -30,18 +30,7 @@ export function FileUploadZone({
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragOver(false);
-      
-      const droppedFiles = Array.from(e.dataTransfer.files);
-      addFiles(droppedFiles);
-    },
-    [files, maxFiles]
-  );
-
-  const addFiles = (newFiles: File[]) => {
+  const addFiles = useCallback((newFiles: File[]) => {
     const validFiles = newFiles.filter((file) => {
       const ext = '.' + file.name.split('.').pop()?.toLowerCase();
       return acceptedFormats.includes(ext);
@@ -61,7 +50,18 @@ export function FileUploadZone({
     }));
 
     onFilesChange([...files, ...uploadedFiles]);
-  };
+  }, [files, maxFiles, acceptedFormats, onFilesChange]);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      addFiles(droppedFiles);
+    },
+    [addFiles]
+  );
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

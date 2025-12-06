@@ -186,11 +186,14 @@
 
   /* Progress bar retro style */
   .retro-progress {
-    @apply h-4 rounded-full bg-muted overflow-hidden border-2 border-border;
+    @apply rounded-full bg-muted overflow-hidden border-2 border-border;
+    position: relative;
   }
 
   .retro-progress-bar {
-    @apply h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-500;
+    @apply h-full rounded-full bg-gradient-to-r from-primary to-accent;
+    transition: width 0.3s ease-out;
+    position: relative;
     background-image: repeating-linear-gradient(
       45deg,
       transparent,
@@ -198,7 +201,9 @@
       hsl(var(--primary-foreground) / 0.1) 10px,
       hsl(var(--primary-foreground) / 0.1) 20px
     );
+    background-size: 20px 20px;
     animation: progress-stripes 1s linear infinite;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   /* Floating animation */

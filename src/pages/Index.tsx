@@ -5,6 +5,8 @@ import { HeroSection } from '@/components/home/HeroSection';
 import { CategoryTabs } from '@/components/home/CategoryTabs';
 import { ToolsGrid } from '@/components/tools/ToolsGrid';
 import { ToolModal } from '@/components/tools/ToolModal';
+import { SettingsModal } from '@/components/SettingsModal';
+import { ProfileModal } from '@/components/ProfileModal';
 import { tools, getToolsByCategory } from '@/data/tools';
 import { Tool } from '@/types/tools';
 import { cn } from '@/lib/utils';
@@ -13,6 +15,8 @@ const Index = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const filteredTools = activeCategory === 'all' 
     ? tools 
@@ -23,7 +27,9 @@ const Index = () => {
       {/* Sidebar */}
       <Sidebar 
         activeCategory={activeCategory} 
-        onCategoryChange={setActiveCategory} 
+        onCategoryChange={setActiveCategory}
+        onSettingsClick={() => setIsSettingsOpen(true)}
+        onUpgradeClick={() => setIsProfileOpen(true)}
       />
 
       {/* Main content */}
@@ -31,7 +37,7 @@ const Index = () => {
         "transition-all duration-300",
         sidebarCollapsed ? "ml-20" : "ml-64"
       )}>
-        <Header />
+        <Header onProfileClick={() => setIsProfileOpen(true)} />
         
         <div className="p-6 lg:p-8">
           {/* Hero section */}
@@ -92,6 +98,18 @@ const Index = () => {
           onClose={() => setSelectedTool(null)}
         />
       )}
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
     </div>
   );
 };
