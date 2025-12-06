@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Tool } from '@/types/tools';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Lock } from 'lucide-react';
 
 interface ToolCardProps {
   tool: Tool;
@@ -73,8 +73,16 @@ export function ToolCard({ tool, onClick }: ToolCardProps) {
       </div>
 
       {/* File limit badge */}
-      <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-card/50 text-xs font-semibold text-muted-foreground">
-        <span>Up to {tool.maxFiles} files</span>
+      <div className="mt-4 flex items-center gap-2 flex-wrap">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-card/50 text-xs font-semibold text-muted-foreground">
+          Up to {tool.maxFiles} files
+        </span>
+        {tool.requiresApi && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+            <Lock className="w-3 h-3" />
+            API Required
+          </span>
+        )}
       </div>
     </button>
   );
