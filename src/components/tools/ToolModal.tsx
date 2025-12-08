@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FileUploadZone } from './FileUploadZone';
 import { ToolSettingsPanel } from './ToolSettingsPanel';
 import { processFiles, downloadBlobs } from '@/lib/fileProcessor';
+import { toast } from 'sonner';
 
 interface ToolModalProps {
   tool: Tool;
@@ -22,23 +23,29 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
   const [isComplete, setIsComplete] = useState(false);
   const [progress, setProgress] = useState(0);
   const [resultBlobs, setResultBlobs] = useState<Blob[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Reset settings when tool changes
+  // Reset state when tool changes
   useEffect(() => {
     setSettings(defaultSettings[tool.id] ?? defaultSettings['merge-pdf']);
     setFiles([]);
     setIsComplete(false);
     setProgress(0);
     setResultBlobs([]);
+    setError(null);
   }, [tool.id]);
 
   const handleProcess = async () => {
-    if (files.length === 0) return;
+    if (files.length === 0) {
+      toast.error('Please upload at least one file');
+      return;
+    }
 
     setIsProcessing(true);
     setProgress(0);
     setIsComplete(false);
     setResultBlobs([]);
+    setError(null);
 
     try {
       const blobs = await processFiles(
@@ -46,7 +53,7 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
         files,
         settings,
         (progress) => {
-          setProgress(Math.min(Math.max(progress, 0), 100)); // Ensure progress is between 0-100
+          setProgress(Math.min(Math.max(Math.round(progress), 0), 100));
         }
       );
       
@@ -56,14 +63,17 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
       
       setResultBlobs(blobs);
       setProgress(100);
+      
       // Small delay to show 100% before showing success
       await new Promise(resolve => setTimeout(resolve, 300));
       setIsComplete(true);
       setIsProcessing(false);
-    } catch (error) {
-      console.error('Processing error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred while processing files. Please try again.';
-      alert(`Error: ${errorMessage}`);
+      toast.success('Processing complete! Your files are ready.');
+    } catch (err) {
+      console.error('Processing error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while processing files.';
+      setError(errorMessage);
+      toast.error(errorMessage);
       setIsProcessing(false);
       setProgress(0);
       setIsComplete(false);
@@ -76,21 +86,19 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
     const settingsObj = settings as any;
     const baseFilename = settingsObj.outputFilename || tool.id.replace(/-/g, '_');
     
-    // Determine file extension and MIME type based on tool
+    // Determine file extension based on tool
     let extension = 'pdf';
     if (tool.id === 'pdf-to-jpg') {
       extension = 'jpg';
     } else if (tool.id === 'format-converter') {
       extension = settingsObj.outputFormat || 'png';
     } else if (tool.id === 'compress-image') {
-      // Keep original extension or default to jpg
       const originalExt = files[0]?.name.split('.').pop()?.toLowerCase();
       extension = originalExt || 'jpg';
-    } else if (tool.id === 'split-pdf') {
-      extension = 'pdf';
     }
     
     downloadBlobs(resultBlobs, baseFilename, extension);
+    toast.success(`Downloaded ${resultBlobs.length} file${resultBlobs.length > 1 ? 's' : ''}`);
   };
 
   const handleReset = () => {
@@ -98,6 +106,7 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
     setIsComplete(false);
     setProgress(0);
     setResultBlobs([]);
+    setError(null);
   };
 
   if (!isOpen) return null;
@@ -186,6 +195,27 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
                 Close
               </Button>
             </div>
+          ) : error ? (
+            /* Error State */
+            <div className="text-center py-8">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-destructive/20 to-destructive/10 flex items-center justify-center">
+                <AlertCircle className="w-10 h-10 text-destructive" />
+              </div>
+              <h3 className="font-bold text-xl text-foreground mb-2">
+                Processing Error
+              </h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                {error}
+              </p>
+              <div className="flex justify-center gap-4">
+                <Button variant="outline" onClick={handleReset}>
+                  Try Again
+                </Button>
+                <Button variant="outline" onClick={onClose}>
+                  Close
+                </Button>
+              </div>
+            </div>
           ) : !isComplete ? (
             <div className="grid md:grid-cols-5 gap-6">
               {/* Upload zone */}
@@ -235,12 +265,12 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
                 Processing Complete!
               </h3>
               <p className="text-muted-foreground mb-6">
-                Your files are ready to download
+                Your {resultBlobs.length} {resultBlobs.length === 1 ? 'file is' : 'files are'} ready to download
               </p>
               <div className="flex justify-center gap-4">
                 <Button variant="coral" size="lg" onClick={handleDownload}>
                   <Download className="w-5 h-5 mr-2" />
-                  Download Files
+                  Download {resultBlobs.length > 1 ? 'Files' : 'File'}
                 </Button>
                 <Button variant="outline" size="lg" onClick={handleReset}>
                   Process More
@@ -251,7 +281,7 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
         </div>
 
         {/* Footer */}
-        {!isComplete && !isApiRequired && (
+        {!isComplete && !isApiRequired && !error && !isProcessing && (
           <div className="p-6 border-t-2 border-border bg-muted/30 shrink-0">
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={onClose}>
@@ -263,16 +293,7 @@ export function ToolModal({ tool, isOpen, onClose }: ToolModalProps) {
                 onClick={handleProcess}
                 disabled={files.length === 0 || isProcessing}
               >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    {getProcessButtonText(tool.id)}
-                  </>
-                )}
+                {getProcessButtonText(tool.id)}
               </Button>
             </div>
           </div>
@@ -317,8 +338,8 @@ function getToolTip(toolId: string): { title: string; description: string } {
       description: 'JPG for photos, PNG for graphics with transparency, WebP for web.',
     },
     'compress-pdf': {
-      title: 'Basic compression',
-      description: 'Removes duplicate resources and optimizes structure. For heavy compression, use API tools.',
+      title: 'Optimization',
+      description: 'Removes duplicate resources and optimizes PDF structure for smaller file size.',
     },
   };
 
