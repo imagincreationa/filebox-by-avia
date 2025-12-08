@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { HeroSection } from '@/components/home/HeroSection';
@@ -10,8 +11,12 @@ import { ProfileModal } from '@/components/ProfileModal';
 import { tools, getToolsByCategory } from '@/data/tools';
 import { Tool } from '@/types/tools';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -21,6 +26,16 @@ const Index = () => {
   const filteredTools = activeCategory === 'all' 
     ? tools 
     : getToolsByCategory(activeCategory);
+
+  const handleToolSelect = (tool: Tool) => {
+    // Check if user is logged in
+    if (!user) {
+      toast.info('Please sign in to use FileBox tools');
+      navigate('/auth');
+      return;
+    }
+    setSelectedTool(tool);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -37,7 +52,10 @@ const Index = () => {
         "transition-all duration-300",
         sidebarCollapsed ? "ml-20" : "ml-64"
       )}>
-        <Header onProfileClick={() => setIsProfileOpen(true)} />
+        <Header 
+          onProfileClick={() => setIsProfileOpen(true)} 
+          onToolSelect={handleToolSelect}
+        />
         
         <div className="p-6 lg:p-8">
           {/* Hero section */}
@@ -63,7 +81,7 @@ const Index = () => {
 
             <ToolsGrid 
               tools={filteredTools} 
-              onToolSelect={setSelectedTool} 
+              onToolSelect={handleToolSelect} 
             />
           </section>
 
