@@ -1,9 +1,13 @@
 import { PDFDocument, degrees } from 'pdf-lib';
 import { UploadedFile, ToolSettings } from '@/types/tools';
 
-// Helper to convert Uint8Array to Blob safely
-function uint8ArrayToBlob(uint8Array: Uint8Array, mimeType: string): Blob {
-  return new Blob([uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength)], { type: mimeType });
+// Helper to create a PDF Blob from pdf-lib Uint8Array (fixes TypeScript compatibility)
+function createPdfBlob(pdfBytes: Uint8Array): Blob {
+  // Create a new ArrayBuffer and copy the data to ensure compatibility
+  const buffer = new ArrayBuffer(pdfBytes.length);
+  const view = new Uint8Array(buffer);
+  view.set(pdfBytes);
+  return new Blob([buffer], { type: 'application/pdf' });
 }
 
 // Helper to download a blob as a file
@@ -60,7 +64,7 @@ export async function processMergePdf(
   const pdfBytes = await mergedPdf.save();
   onProgress(100);
   
-  return [new Blob([pdfBytes], { type: 'application/pdf' })];
+  return [createPdfBlob(pdfBytes)];
 }
 
 // Process Split PDF - REAL IMPLEMENTATION
@@ -96,7 +100,7 @@ export async function processSplitPdf(
       const [page] = await newPdf.copyPages(sourcePdf, [i]);
       newPdf.addPage(page);
       const pdfBytes = await newPdf.save();
-      blobs.push(new Blob([pdfBytes], { type: 'application/pdf' }));
+      blobs.push(createPdfBlob(pdfBytes));
       onProgress(10 + ((i + 1) / totalPages) * 80);
     }
   } else if (splitMethod === 'range') {
@@ -110,7 +114,7 @@ export async function processSplitPdf(
       newPdf.addPage(page);
     }
     const pdfBytes = await newPdf.save();
-    blobs.push(new Blob([pdfBytes], { type: 'application/pdf' }));
+    blobs.push(createPdfBlob(pdfBytes));
   } else if (splitMethod === 'extract') {
     // Extract specific pages
     const extractPages = splitSettings.extractPages || '1';
@@ -122,7 +126,7 @@ export async function processSplitPdf(
       const [page] = await newPdf.copyPages(sourcePdf, [pageIndex]);
       newPdf.addPage(page);
       const pdfBytes = await newPdf.save();
-      blobs.push(new Blob([pdfBytes], { type: 'application/pdf' }));
+      blobs.push(createPdfBlob(pdfBytes));
       onProgress(10 + ((i + 1) / pageIndices.length) * 80);
     }
   }
@@ -181,7 +185,7 @@ export async function processCompressPdf(
         addDefaultPage: false,
       });
       
-      blobs.push(new Blob([pdfBytes], { type: 'application/pdf' }));
+      blobs.push(createPdfBlob(pdfBytes));
     } catch (error) {
       console.error(`Error compressing ${file.name}:`, error);
       throw new Error(`Failed to compress ${file.name}. Make sure it's a valid PDF.`);
@@ -246,7 +250,7 @@ export async function processRotatePdf(
   const pdfBytes = await pdf.save();
   onProgress(100);
   
-  return [new Blob([pdfBytes], { type: 'application/pdf' })];
+  return [createPdfBlob(pdfBytes)];
 }
 
 // Process PDF to JPG - Canvas-based conversion
@@ -444,7 +448,7 @@ export async function processJpgToPdf(
   const pdfBytes = await pdfDoc.save();
   onProgress(100);
   
-  return [new Blob([pdfBytes], { type: 'application/pdf' })];
+  return [createPdfBlob(pdfBytes)];
 }
 
 // Process Compress Image - Canvas-based compression
@@ -708,7 +712,7 @@ export async function processOrganizePdf(
   const pdfBytes = await newPdf.save();
   onProgress(100);
   
-  return [new Blob([pdfBytes], { type: 'application/pdf' })];
+  return [createPdfBlob(pdfBytes)];
 }
 
 // Main processor function
